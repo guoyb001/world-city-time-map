@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>世界城市时间地图</title>
+  <style>
+    :root {
+      --blue: #1a73e8;
+      --red: #ea4335;
+      --yellow: #fbbc04;
+      --green: #34a853;
+      --ink: #202124;
+      --muted: #5f6368;
+      --line: #dadce0;
+      --soft: #f8fafd;
+      --land: #dfe7f3;
+      --land-strong: #c6d5ec;
+      --water: #eef4fb;
+      --shadow: 0 1px 2px rgba(60, 64, 67, 0.12), 0 2px 6px rgba(60, 64, 67, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: #fff;
+      font-family: "Google Sans", "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 14px 28px;
+      background: rgba(255, 255, 255, 0.88);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 220px;
+      font-size: 20px;
+      font-weight: 500;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .brand-mark {
+      display: grid;
+      grid-template-columns: repeat(2, 10px);
+      grid-template-rows: repeat(2, 10px);
+      gap: 3px;
+      width: 23px;
+      height: 23px;
+    }
+
+    .brand-mark span {
+      border-radius: 50%;
+    }
+
+    .brand-mark span:nth-child(1) { background: var(--blue); }
+    .brand-mark span:nth-child(2) { background: var(--red); }
+    .brand-mark span:nth-child(3) { background: var(--yellow); }
+    .brand-mark span:nth-child(4) { background: var(--green); }
+
+    .search {
+      flex: 1;
+      max-width: 620px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 18px;
+      color: var(--muted);
+      background: #f1f3f4;
+      border: 1px solid transparent;
+      border-radius: 24px;
+      box-shadow: inset 0 0 0 1px transparent;
+    }
+
+    .search:focus-within {
+      background: #fff;
+      border-color: var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .search svg {
+      flex: 0 0 auto;
+    }
+
+    .search input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-size: 15px;
+    }
+
+    .date-chip {
+      color: var(--muted);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      min-height: 0;
+    }
+
+    .map-stage {
+      position: relative;
+      overflow: hidden;
+      min-height: 720px;
+      background:
+        radial-gradient(circle at 50% 42%, rgba(26, 115, 232, 0.08), transparent 34%),
+        linear-gradient(180deg, #fff 0%, var(--soft) 100%);
+    }
+
+    .map-shell {
+      position: absolute;
+      inset: 24px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      overflow: hidden;
+      background: var(--water);
+      box-shadow: var(--shadow);
+    }
+
+    .real-map {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #d8ecf8;
+    }
+
+    .real-map::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04)),
+        radial-gradient(circle at 50% 43%, rgba(255, 255, 255, 0.12), transparent 42%);
+      pointer-events: none;
+    }
+
+    .world-map-copy {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      opacity: 0.94;
+      filter: saturate(1.08) contrast(1.02) brightness(1.03);
+    }
+
+    .map-grid {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .graticule {
+      stroke: rgba(95, 99, 104, 0.16);
+      stroke-width: 1;
+      fill: none;
+    }
+
+    .land {
+      fill: var(--land);
+      stroke: #fff;
+      stroke-width: 1.4;
+    }
+
+    .land-strong {
+      fill: var(--land-strong);
+    }
+
+    .city-marker {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px 7px 7px;
+      border: 1px solid rgba(218, 220, 224, 0.86);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 1px 3px rgba(60, 64, 67, 0.18);
+      cursor: pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+      user-select: none;
+    }
+
+    .city-marker:hover,
+    .city-marker.active {
+      transform: translate(-50%, -50%) scale(1.04);
+      border-color: rgba(26, 115, 232, 0.5);
+      box-shadow: 0 4px 14px rgba(60, 64, 67, 0.24);
+      z-index: 5;
+    }
+
+    .pin {
+      width: 12px;
+      height: 12px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.18);
+    }
+
+    .city-marker.beijing {
+      padding: 10px 15px 10px 9px;
+      border-color: rgba(26, 115, 232, 0.58);
+      box-shadow: 0 6px 22px rgba(26, 115, 232, 0.24);
+    }
+
+    .city-marker.beijing .pin {
+      width: 16px;
+      height: 16px;
+      background: var(--red);
+      box-shadow: 0 0 0 5px rgba(234, 67, 53, 0.16);
+    }
+
+    .city-name {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .city-time {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .center-badge {
+      position: absolute;
+      left: 50%;
+      top: 18px;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      color: #174ea6;
+      background: rgba(232, 240, 254, 0.96);
+      border: 1px solid #d2e3fc;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 1px 4px rgba(26, 115, 232, 0.12);
+    }
+
+    .legend {
+      position: absolute;
+      left: 26px;
+      bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      font-size: 13px;
+      box-shadow: var(--shadow);
+    }
+
+    .map-credit {
+      position: absolute;
+      right: 26px;
+      bottom: 24px;
+      padding: 8px 12px;
+      color: rgba(95, 99, 104, 0.86);
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(218, 220, 224, 0.78);
+      border-radius: 16px;
+      font-size: 12px;
+      box-shadow: 0 1px 3px rgba(60, 64, 67, 0.12);
+    }
+
+    .copyright {
+      position: absolute;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      padding: 8px 12px;
+      color: rgba(95, 99, 104, 0.92);
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(218, 220, 224, 0.78);
+      border-radius: 16px;
+      font-size: 12px;
+      box-shadow: 0 1px 3px rgba(60, 64, 67, 0.12);
+      white-space: nowrap;
+    }
+
+    .map-credit a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .sidebar {
+      overflow: auto;
+      border-left: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .panel {
+      padding: 24px;
+    }
+
+    .now-card {
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .now-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .now-time {
+      margin-top: 8px;
+      color: var(--blue);
+      font-size: 42px;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .now-date {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .city-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 22px;
+    }
+
+    .city-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .city-row:hover,
+    .city-row.active {
+      background: #f8fafd;
+      border-color: var(--line);
+    }
+
+    .row-city {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .row-zone {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .row-time {
+      color: var(--ink);
+      font-size: 18px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 980px) {
+      header {
+        align-items: stretch;
+        flex-direction: column;
+        padding: 14px 18px;
+      }
+
+      .brand {
+        min-width: 0;
+      }
+
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .map-stage {
+        min-height: 620px;
+      }
+
+      .map-shell {
+        inset: 14px;
+        border-radius: 20px;
+      }
+
+      .sidebar {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .map-stage {
+        min-height: 560px;
+      }
+
+      .city-marker {
+        padding: 6px;
+      }
+
+      .city-marker:not(.beijing) .city-copy {
+        display: none;
+      }
+
+      .center-badge {
+        width: calc(100% - 36px);
+        justify-content: center;
+      }
+
+      .legend {
+        left: 18px;
+        right: 18px;
+        justify-content: center;
+        bottom: 48px;
+      }
+
+      .map-credit {
+        left: 18px;
+        right: 18px;
+        bottom: 14px;
+        text-align: center;
+      }
+
+      .copyright {
+        bottom: 78px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand" aria-label="世界城市时间地图">
+        <div class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        世界城市时间
+      </div>
+      <label class="search" for="citySearch">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m20 20-3.8-3.8"></path>
+        </svg>
+        <input id="citySearch" type="search" placeholder="搜索城市或时区" autocomplete="off">
+      </label>
+      <div class="date-chip" id="dateChip"></div>
+    </header>
+
+    <main>
+      <section class="map-stage" aria-label="以北京为中心的世界地图">
+        <div class="map-shell" id="mapShell">
+          <div class="real-map" role="img" aria-label="北京位于中心的真实世界地图">
+            <img class="world-map-copy" data-map-copy="-1" alt="" aria-hidden="true" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Equirectangular-projection-topographic-world.jpg">
+            <img class="world-map-copy" data-map-copy="0" alt="" aria-hidden="true" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Equirectangular-projection-topographic-world.jpg">
+            <img class="world-map-copy" data-map-copy="1" alt="" aria-hidden="true" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Equirectangular-projection-topographic-world.jpg">
+            <svg class="map-grid" viewBox="0 0 1000 520" aria-hidden="true">
+              <g class="graticule">
+                <path d="M0 86.7H1000M0 173.3H1000M0 260H1000M0 346.7H1000M0 433.3H1000"></path>
+                <path d="M83.3 0V520M166.7 0V520M250 0V520M333.3 0V520M416.7 0V520M500 0V520M583.3 0V520M666.7 0V520M750 0V520M833.3 0V520M916.7 0V520"></path>
+              </g>
+            </svg>
+          </div>
+          <div class="center-badge">北京 · UTC+8</div>
+          <div class="legend">
+            <span class="pin" aria-hidden="true"></span>
+            主要城市时间每秒自动刷新
+          </div>
+          <div class="map-credit">
+            底图:
+            <a href="https://commons.wikimedia.org/wiki/File:Equirectangular-projection-topographic-world.jpg">Wikimedia Commons</a>
+          </div>
+          <div class="copyright">Copyright © guoyb. All rights reserved.</div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="panel">
+          <section class="now-card" aria-label="北京时间">
+            <div class="now-label">北京时间</div>
+            <div class="now-time" id="beijingTime">--:--:--</div>
+            <div class="now-date" id="beijingDate">正在同步</div>
+          </section>
+          <div class="city-list" id="cityList" aria-label="城市时间列表"></div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const beijingLongitude = 116.4074;
+    const cities = [
+      { name: "北京", zone: "Asia/Shanghai", lat: 39.9042, lon: 116.4074, primary: true },
+      { name: "东京", zone: "Asia/Tokyo", lat: 35.6762, lon: 139.6503 },
+      { name: "首尔", zone: "Asia/Seoul", lat: 37.5665, lon: 126.9780 },
+      { name: "新加坡", zone: "Asia/Singapore", lat: 1.3521, lon: 103.8198 },
+      { name: "悉尼", zone: "Australia/Sydney", lat: -33.8688, lon: 151.2093 },
+      { name: "迪拜", zone: "Asia/Dubai", lat: 25.2048, lon: 55.2708 },
+      { name: "德里", zone: "Asia/Kolkata", lat: 28.6139, lon: 77.2090 },
+      { name: "莫斯科", zone: "Europe/Moscow", lat: 55.7558, lon: 37.6173 },
+      { name: "巴黎", zone: "Europe/Paris", lat: 48.8566, lon: 2.3522 },
+      { name: "伦敦", zone: "Europe/London", lat: 51.5072, lon: -0.1276 },
+      { name: "开罗", zone: "Africa/Cairo", lat: 30.0444, lon: 31.2357 },
+      { name: "约翰内斯堡", zone: "Africa/Johannesburg", lat: -26.2041, lon: 28.0473 },
+      { name: "纽约", zone: "America/New_York", lat: 40.7128, lon: -74.0060 },
+      { name: "洛杉矶", zone: "America/Los_Angeles", lat: 34.0522, lon: -118.2437 },
+      { name: "圣保罗", zone: "America/Sao_Paulo", lat: -23.5558, lon: -46.6396 }
+    ];
+
+    const mapShell = document.getElementById("mapShell");
+    const cityList = document.getElementById("cityList");
+    const searchInput = document.getElementById("citySearch");
+    const dateChip = document.getElementById("dateChip");
+    const beijingTime = document.getElementById("beijingTime");
+    const beijingDate = document.getElementById("beijingDate");
+    const markerByName = new Map();
+    const rowByName = new Map();
+
+    function positionMapCopies() {
+      const beijingMapX = ((beijingLongitude + 180) / 360) * 100;
+      const centeredOffset = 50 - beijingMapX;
+      document.querySelectorAll(".world-map-copy").forEach((copy) => {
+        const repeat = Number(copy.dataset.mapCopy);
+        copy.style.left = `${centeredOffset + repeat * 100}%`;
+      });
+    }
+
+    function centeredX(lon) {
+      const shifted = ((lon - beijingLongitude + 540) % 360) - 180;
+      return ((shifted + 180) / 360) * 100;
+    }
+
+    function projectedPosition(city) {
+      return {
+        x: centeredX(city.lon),
+        y: ((90 - city.lat) / 180) * 100
+      };
+    }
+
+    function formatTime(zone, includeSeconds = true) {
+      return new Intl.DateTimeFormat("zh-CN", {
+        timeZone: zone,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: includeSeconds ? "2-digit" : undefined,
+        hour12: false
+      }).format(new Date());
+    }
+
+    function formatDate(zone) {
+      return new Intl.DateTimeFormat("zh-CN", {
+        timeZone: zone,
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      }).format(new Date());
+    }
+
+    function activateCity(name) {
+      markerByName.forEach((marker) => marker.classList.remove("active"));
+      rowByName.forEach((row) => row.classList.remove("active"));
+      markerByName.get(name)?.classList.add("active");
+      rowByName.get(name)?.classList.add("active");
+    }
+
+    function createMarker(city) {
+      const marker = document.createElement("button");
+      const position = projectedPosition(city);
+      marker.className = `city-marker${city.primary ? " beijing active" : ""}`;
+      marker.type = "button";
+      marker.style.left = `${position.x}%`;
+      marker.style.top = `${position.y}%`;
+      marker.setAttribute("aria-label", `${city.name} 当前时间`);
+      marker.innerHTML = `
+        <span class="pin" aria-hidden="true"></span>
+        <span class="city-copy">
+          <span class="city-name">${city.name}</span>
+          <span class="city-time" data-time="${city.name}">--:--</span>
+        </span>
+      `;
+      marker.addEventListener("click", () => activateCity(city.name));
+      mapShell.appendChild(marker);
+      markerByName.set(city.name, marker);
+    }
+
+    function createRow(city) {
+      const row = document.createElement("button");
+      row.className = `city-row${city.primary ? " active" : ""}`;
+      row.type = "button";
+      row.dataset.city = city.name;
+      row.dataset.zone = city.zone;
+      row.innerHTML = `
+        <span>
+          <span class="row-city">${city.name}</span>
+          <span class="row-zone">${city.zone}</span>
+        </span>
+        <span class="row-time" data-row-time="${city.name}">--:--</span>
+      `;
+      row.addEventListener("click", () => activateCity(city.name));
+      cityList.appendChild(row);
+      rowByName.set(city.name, row);
+    }
+
+    function updateTimes() {
+      const now = new Date();
+      dateChip.textContent = new Intl.DateTimeFormat("zh-CN", {
+        timeZone: "Asia/Shanghai",
+        month: "long",
+        day: "numeric",
+        weekday: "long"
+      }).format(now);
+      beijingTime.textContent = formatTime("Asia/Shanghai");
+      beijingDate.textContent = formatDate("Asia/Shanghai");
+
+      cities.forEach((city) => {
+        const compact = formatTime(city.zone, false);
+        const full = formatTime(city.zone);
+        document.querySelector(`[data-time="${city.name}"]`).textContent = compact;
+        document.querySelector(`[data-row-time="${city.name}"]`).textContent = full;
+      });
+    }
+
+    function filterCities() {
+      const value = searchInput.value.trim().toLowerCase();
+      cities.forEach((city) => {
+        const matched = `${city.name} ${city.zone}`.toLowerCase().includes(value);
+        markerByName.get(city.name).hidden = !matched;
+        rowByName.get(city.name).hidden = !matched;
+      });
+    }
+
+    positionMapCopies();
+    cities.forEach((city) => {
+      createMarker(city);
+      createRow(city);
+    });
+
+    searchInput.addEventListener("input", filterCities);
+    updateTimes();
+    setInterval(updateTimes, 1000);
+  </script>
+</body>
+</html>
