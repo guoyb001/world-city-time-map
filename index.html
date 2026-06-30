@@ -81,6 +81,57 @@
     .brand-mark span:nth-child(3) { background: var(--yellow); }
     .brand-mark span:nth-child(4) { background: var(--green); }
 
+    .site-nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+      padding: 4px;
+      border-radius: 999px;
+      background: rgba(241, 243, 244, 0.7);
+    }
+
+    .site-nav a {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.18s ease, color 0.18s ease;
+    }
+
+    .site-nav a:hover {
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .site-nav a.active {
+      background: #fff;
+      color: var(--blue);
+      box-shadow: 0 1px 2px rgba(60, 64, 67, 0.12);
+    }
+
+    @media (max-width: 980px) {
+      .site-nav a {
+        padding: 6px 10px;
+        font-size: 13px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .site-nav {
+        padding: 3px;
+      }
+      .site-nav a {
+        padding: 5px 8px;
+        font-size: 12px;
+      }
+    }
+
     .search {
       flex: 1;
       max-width: 620px;
@@ -487,6 +538,13 @@
         </div>
         世界城市时间
       </div>
+      <nav class="site-nav" aria-label="网站导航">
+        <a href="https://guoyb.cn/" class="active">时间地图</a>
+        <a href="https://snake.guoyb.cn/">贪吃蛇</a>
+        <a href="https://type.guoyb.cn/">打字练习</a>
+        <a href="https://zk.guoyb.cn/">深圳中考</a>
+      </nav>
+
       <label class="search" for="citySearch">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="11" cy="11" r="7"></circle>
@@ -501,9 +559,9 @@
       <section class="map-stage" aria-label="以北京为中心的世界地图">
         <div class="map-shell" id="mapShell">
           <div class="real-map" role="img" aria-label="北京位于中心的真实世界地图">
-            <img class="world-map-copy" data-map-copy="-1" alt="" aria-hidden="true" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Equirectangular-projection-topographic-world.jpg">
-            <img class="world-map-copy" data-map-copy="0" alt="" aria-hidden="true" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Equirectangular-projection-topographic-world.jpg">
-            <img class="world-map-copy" data-map-copy="1" alt="" aria-hidden="true" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Equirectangular-projection-topographic-world.jpg">
+            <img class="world-map-copy" data-map-copy="-1" alt="" aria-hidden="true" src="/world-map.jpg">
+            <img class="world-map-copy" data-map-copy="0" alt="" aria-hidden="true" src="/world-map.jpg">
+            <img class="world-map-copy" data-map-copy="1" alt="" aria-hidden="true" src="/world-map.jpg">
             <svg class="map-grid" viewBox="0 0 1000 520" aria-hidden="true">
               <g class="graticule">
                 <path d="M0 86.7H1000M0 173.3H1000M0 260H1000M0 346.7H1000M0 433.3H1000"></path>
@@ -518,7 +576,7 @@
           </div>
           <div class="map-credit">
             底图:
-            <a href="https://commons.wikimedia.org/wiki/File:Equirectangular-projection-topographic-world.jpg">Wikimedia Commons</a>
+            <a href="https://visibleearth.nasa.gov/collection/1484/blue-marble">NASA Visible Earth (公共域)</a>
           </div>
           <div class="copyright">Copyright © guoyb. All rights reserved.</div>
         </div>
@@ -539,19 +597,15 @@
 
   <script>
     const beijingLongitude = 116.4074;
+    // 10 个城市，覆盖各主要时区（含 UTC+5:30 独特半小时时区）
     const cities = [
       { name: "北京", zone: "Asia/Shanghai", lat: 39.9042, lon: 116.4074, primary: true },
       { name: "东京", zone: "Asia/Tokyo", lat: 35.6762, lon: 139.6503 },
-      { name: "首尔", zone: "Asia/Seoul", lat: 37.5665, lon: 126.9780 },
-      { name: "新加坡", zone: "Asia/Singapore", lat: 1.3521, lon: 103.8198 },
       { name: "悉尼", zone: "Australia/Sydney", lat: -33.8688, lon: 151.2093 },
-      { name: "迪拜", zone: "Asia/Dubai", lat: 25.2048, lon: 55.2708 },
       { name: "德里", zone: "Asia/Kolkata", lat: 28.6139, lon: 77.2090 },
       { name: "莫斯科", zone: "Europe/Moscow", lat: 55.7558, lon: 37.6173 },
       { name: "巴黎", zone: "Europe/Paris", lat: 48.8566, lon: 2.3522 },
       { name: "伦敦", zone: "Europe/London", lat: 51.5072, lon: -0.1276 },
-      { name: "开罗", zone: "Africa/Cairo", lat: 30.0444, lon: 31.2357 },
-      { name: "约翰内斯堡", zone: "Africa/Johannesburg", lat: -26.2041, lon: 28.0473 },
       { name: "纽约", zone: "America/New_York", lat: 40.7128, lon: -74.0060 },
       { name: "洛杉矶", zone: "America/Los_Angeles", lat: 34.0522, lon: -118.2437 },
       { name: "圣保罗", zone: "America/Sao_Paulo", lat: -23.5558, lon: -46.6396 }
